@@ -1,0 +1,39 @@
+### Server-Sent Events (SSE) Testing
+### Test real-time notifications functionality
+
+### Variables
+@baseUrl = http://localhost:8080/api
+@sseUrl = http://localhost:8080/api/notifications/stream
+
+### Note: SSE connections cannot be tested directly in REST Client
+### Use these URLs in your browser or testing tools
+
+### 1. SSE Connection for testuser123
+# Open in browser: {{sseUrl}}/testuser123
+
+### 2. SSE Connection for testuser456  
+# Open in browser: {{sseUrl}}/testuser456
+
+### 3. Test SSE by creating a task (use this after opening SSE connections)
+POST {{baseUrl}}/tasks
+Authorization: Bearer your-token-here
+Content-Type: application/json
+
+{
+  "title": "SSE Test Task",
+  "description": "This task should trigger SSE notifications",
+  "priority": "HIGH",
+  "assignedTo": 2
+}
+
+###
+
+### Instructions for Testing SSE:
+### 1. Login two users (testuser123, testuser456) and get their tokens
+### 2. Open two browser tabs to:
+###    - http://localhost:8080/api/notifications/stream/testuser123
+###    - http://localhost:8080/api/notifications/stream/testuser456
+### 3. Create/update/delete tasks using the API and watch notifications in real-time
+### 4. Use the frontend application for better SSE testing experience
+
+###

@@ -1,0 +1,52 @@
+### System Status Checks
+### Quick health checks for all services
+
+### Variables  
+@backendUrl = http://localhost:8080
+@frontendUrl = http://localhost:5173
+@dbHost = localhost:5432
+
+### 1. Backend Health Check
+GET {{backendUrl}}/api/health
+Accept: application/json
+
+###
+
+### 2. Backend Actuator Health (if enabled)
+GET {{backendUrl}}/actuator/health
+Accept: application/json
+
+###
+
+### 3. Frontend Availability Check
+GET {{frontendUrl}}
+Accept: text/html
+
+###
+
+### 4. Backend Root Check
+GET {{backendUrl}}
+Accept: application/json
+
+###
+
+### 5. Check API Documentation (if Swagger is enabled)
+GET {{backendUrl}}/swagger-ui/index.html
+Accept: text/html
+
+###
+
+### Note: Database and Redis connections cannot be tested via HTTP
+### Use these commands in terminal instead:
+###
+### Check PostgreSQL:
+### netstat -ano | findstr :5432
+### 
+### Check Redis (if used):
+### netstat -ano | findstr :6379
+###
+### Check if ports are occupied:
+### netstat -ano | findstr :8080  (backend)
+### netstat -ano | findstr :5173  (frontend)
+
+###

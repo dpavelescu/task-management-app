@@ -1,0 +1,102 @@
+# Build artifacts
+target/
+dist/
+build/
+out/
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.iml
+*.iws
+*.ipr
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Log files
+*.log
+logs/
+*.log.*
+
+# Environment files (contains sensitive data)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+# Java specific
+*.class
+*.jar
+*.war
+*.ear
+
+# Maven specific
+.mvn/
+mvn.cmd
+mvnw
+mvnw.cmd
+
+# Spring Boot
+HELP.md
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# NPM/Yarn specific
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# React/Frontend build
+/frontend/dist
+/frontend/build
+
+# Test coverage
+coverage/
+*.lcov
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Database files (if using local sqlite)
+*.db
+*.sqlite
+*.sqlite3
+
+# Sensitive content (double-check these aren't needed)
+*secret*
+*password*
+*key.txt
+*credentials*
+
+# Application specific
+backend.log
+output.log
+application-dev.log

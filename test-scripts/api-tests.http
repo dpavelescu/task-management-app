@@ -1,0 +1,145 @@
+### Task Management API Testing
+### This file contains HTTP requests for testing the backend API
+### Use VS Code REST Client extension to execute these requests
+
+### Variables
+@baseUrl = http://localhost:8080/api
+@contentType = application/json
+
+### Test Variables
+@testUsername = testuser123
+@testEmail = test123@example.com
+@testPassword = password123
+@testUsername2 = testuser456
+@testEmail2 = test456@example.com
+
+### 1. Health Check - Test if backend is running
+GET {{baseUrl}}/health
+Accept: application/json
+
+###
+
+### 2. User Registration - Test User 1
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "username": "{{testUsername}}",
+  "email": "{{testEmail}}",
+  "password": "{{testPassword}}"
+}
+
+###
+
+### 3. User Registration - Test User 2
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "username": "{{testUsername2}}",
+  "email": "{{testEmail2}}",
+  "password": "{{testPassword}}"
+}
+
+###
+
+### 4. Login - Test User 1
+# @name loginUser1
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "username": "{{testUsername}}",
+  "password": "{{testPassword}}"
+}
+
+###
+
+### 5. Login - Test User 2
+# @name loginUser2
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "username": "{{testUsername2}}",
+  "password": "{{testPassword}}"
+}
+
+###
+
+### Extract token from login response (use after login)
+@authToken = {{loginUser1.response.body.accessToken}}
+
+###
+
+### 6. Get All Users (requires authentication)
+GET {{baseUrl}}/users
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+###
+
+### 7. Create Task
+POST {{baseUrl}}/tasks
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "title": "Test Task",
+  "description": "This is a test task created via API",
+  "priority": "HIGH"
+}
+
+###
+
+### 8. Create Task with Assignment
+POST {{baseUrl}}/tasks
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "title": "Assigned Test Task",
+  "description": "This task is assigned to another user",
+  "priority": "MEDIUM",
+  "assignedTo": 2
+}
+
+###
+
+### 9. Get User's Tasks
+GET {{baseUrl}}/tasks
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+###
+
+### 10. Update Task Status
+# @name createTask
+PUT {{baseUrl}}/tasks/1
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+  "title": "Updated Test Task",
+  "description": "This task has been updated",
+  "status": "IN_PROGRESS",
+  "priority": "URGENT"
+}
+
+###
+
+### 11. Delete Task
+DELETE {{baseUrl}}/tasks/1
+Authorization: Bearer {{authToken}}
+
+###
+
+### 12. Refresh Token
+POST {{baseUrl}}/auth/refresh
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "your-refresh-token-here"
+}
+
+###

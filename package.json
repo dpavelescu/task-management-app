@@ -1,0 +1,36 @@
+{
+  "name": "task-management-app",
+  "version": "1.0.0",
+  "description": "Real-time task management application",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd docker && docker-compose up -d",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:logs": "cd docker && docker-compose logs -f backend",
+    "stop": "cd docker && docker-compose down",
+    "restart": "npm run stop && npm run dev:backend",
+    "status": "netstat -ano | findstr \":8080 :5173 :5432\"",
+    "test:api": "echo \"Open test-scripts/api-tests.http in VS Code with REST Client extension\"",
+    "test:sse": "echo \"Open test-scripts/sse-tests.http for SSE testing instructions\"",
+    "build": "cd frontend && npm run build",
+    "clean": "cd docker && docker-compose down -v && docker system prune -f"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "task-management",
+    "spring-boot",
+    "react",
+    "real-time",
+    "sse"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "task-management-app": "file:"
+  }
+}
