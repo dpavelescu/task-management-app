@@ -49,11 +49,9 @@ public class JwtTokenProvider {
     public boolean validateToken(String token, UserDetails userDetails) {
         String username = getUsernameFromToken(token);
         return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
-    }
-
-    private Claims getClaimsFromToken(String token) {
+    }    private Claims getClaimsFromToken(String token) {
         Key key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
-        return Jwts.parserBuilder()
+        return Jwts.parser()
                 .setSigningKey(key)
                 .build()
                 .parseClaimsJws(token)
