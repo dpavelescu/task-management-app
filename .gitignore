@@ -67,6 +67,7 @@ target/
 !**/src/test/**/target/
 
 # NPM/Yarn specific
+package-lock.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
