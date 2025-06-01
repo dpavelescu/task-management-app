@@ -38,10 +38,10 @@ export function EnhancedAuthProvider({
     user: null,
     isInitialized: false,
     lastTokenCheck: 0
-  });
-  // Refs for cleanup and intervals
+  });  // Refs for cleanup and intervals
   const tokenCheckIntervalRef = useRef<number | null>(null);
   const isNavigatingRef = useRef(false);
+  const lastTokenCheckRef = useRef(0);
 
   // Computed authentication status
   const isAuthenticated = authState.token !== null && 
@@ -68,19 +68,17 @@ export function EnhancedAuthProvider({
     }, 100);
   }, [navigate, location, onAuthenticationRequired]);
   // Handle token expiration
-  const handleTokenExpired = useCallback(() => {
-    setAuthState((prev: AuthState) => ({
+  const handleTokenExpired = useCallback(() => {    setAuthState((prev: AuthState) => ({
       ...prev,
       token: null,
       user: null,
-      lastTokenCheck: Date.now()
+      lastTokenCheck: 0  // Remove the automatic timestamp
     }));
     
     clearStoredAuth();
     onTokenExpired?.();
     handleAuthenticationRequired();
   }, [onTokenExpired, handleAuthenticationRequired]);
-
   // Check token validity
   const checkTokenValidity = useCallback((): boolean => {
     const { token } = authState;
@@ -89,11 +87,10 @@ export function EnhancedAuthProvider({
     
     const isExpired = isTokenExpired(token);
     
-    setAuthState((prev: AuthState) => ({
-      ...prev,
-      lastTokenCheck: Date.now()
-    }));
-      if (isExpired) {
+    // Update ref instead of state to prevent re-renders
+    lastTokenCheckRef.current = Date.now();
+      
+    if (isExpired) {
       handleTokenExpired();
       return false;
     }
@@ -105,20 +102,18 @@ export function EnhancedAuthProvider({
     }
     
     return true;
-    }, [authState, handleTokenExpired]);
+  }, [authState, handleTokenExpired]);
 
   // Initialize auth state from storage
   const initializeAuth = useCallback(async () => {
     try {
       const storedToken = getStoredToken();
-      const storedUser = getStoredUser();
-
-      setAuthState((prev: AuthState) => ({
+      const storedUser = getStoredUser();      setAuthState((prev: AuthState) => ({
         ...prev,
         token: storedToken,
         user: storedUser,
         isInitialized: true,
-        lastTokenCheck: Date.now()
+        lastTokenCheck: 0  // Remove the automatic timestamp
       }));
 
       // If we have invalid auth state, redirect to login
@@ -126,13 +121,12 @@ export function EnhancedAuthProvider({
         handleAuthenticationRequired();
       }
     } catch (error) {
-      console.error('EnhancedAuthProvider: Error during initialization:', error);
-      setAuthState((prev: AuthState) => ({
+      console.error('EnhancedAuthProvider: Error during initialization:', error);      setAuthState((prev: AuthState) => ({
         ...prev,
         token: null,
         user: null,
         isInitialized: true,
-        lastTokenCheck: Date.now()
+        lastTokenCheck: 0  // Remove the automatic timestamp
       }));
       clearStoredAuth();
       handleAuthenticationRequired();
@@ -162,14 +156,12 @@ export function EnhancedAuthProvider({
     const stored = storeAuthData(newToken, newUser);
     if (!stored) {
       throw new Error('Failed to store authentication data');
-    }
-
-    // Update state
+    }    // Update state
     setAuthState({
       token: newToken,
       user: newUser,
       isInitialized: true,
-      lastTokenCheck: Date.now()
+      lastTokenCheck: 0  // Remove the automatic timestamp
     });
 
     // Handle redirect after login
@@ -183,12 +175,11 @@ export function EnhancedAuthProvider({
     }
   }, [navigate]);
   // Logout function
-  const logout = useCallback(() => {
-    setAuthState({
+  const logout = useCallback(() => {    setAuthState({
       token: null,
       user: null,
       isInitialized: true,
-      lastTokenCheck: Date.now()
+      lastTokenCheck: 0  // Remove the automatic timestamp
     });
     
     clearStoredAuth();

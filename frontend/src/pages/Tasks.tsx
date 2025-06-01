@@ -23,7 +23,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useSimpleTaskManager } from '../hooks/useSimpleTaskManager';
 import { useSimpleSSE } from '../hooks/useSimpleSSE';
 import { useErrorNotification } from '../components/useErrorNotification';
-import type { User } from '../types/api';
+import type { User, Task } from '../types/api';
 
 // Export Tasks component as named export to match App.tsx import
 export function Tasks() {
@@ -34,30 +34,26 @@ export function Tasks() {
   // Simple state - no debouncing needed for low-volume usage
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [assignedToId, setAssignedToId] = useState<number | ''>('');
-  const [users, setUsers] = useState<User[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);  // Use simplified task manager
+  const [assignedToId, setAssignedToId] = useState<number | ''>('');  const [users, setUsers] = useState<User[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+    // Pre-computed filtered tasks to avoid expensive filtering on every render
+  const [createdTasks, setCreatedTasks] = useState<Task[]>([]);
+  const [assignedTasks, setAssignedTasks] = useState<Task[]>([]);// Use simplified task manager
   const { tasks, loading, error, addTask, removeTask, refreshTasks } = useSimpleTaskManager();
     // Use simplified SSE
   const { isConnected } = useSimpleSSE({ onTaskUpdate: refreshTasks });
-
-  // Check authentication on mount and when auth state changes
+  // Combined effect to reduce re-renders - only trigger when auth actually changes
   useEffect(() => {
     // Wait for auth to initialize before checking
-    if (!isInitialized) {
-      return;
-    }
+    if (!isInitialized) return;
     
     if (!isAuthenticated) {
       navigate('/login');
+      return;
     }
-  }, [isAuthenticated, isInitialized, navigate]);
-  
-  // Load users for assignment dropdown
-  useEffect(() => {
-    const loadUsers = async () => {
-      if (!isAuthenticated) return;
-      
+
+    // Load users once when authenticated
+    const loadUsers = async () => {      
       try {
         setLoadingUsers(true);
         const fetchedUsers = await getUsers();
@@ -77,22 +73,34 @@ export function Tasks() {
     };
 
     loadUsers();
-  }, [isAuthenticated, logout, navigate, showError]);
-  // Handle query errors
+  }, [isAuthenticated, isInitialized, navigate, logout, showError]);
+  
+  // Separate error handler - only when error actually changes
   useEffect(() => {
-    if (error) {
-      if (error.includes('Session expired') || 
-          error.includes('Not authenticated') ||
-          error.includes('Authentication required') ||
-          error.includes('401') || 
-          error.includes('403')) {
-        logout();
-        navigate('/login');
-      } else {
-        // Show error notification for non-auth errors
-        showError(`Failed to load tasks: ${error}`);
-      }
-    }  }, [error, logout, navigate, showError]);
+    if (!error) return;
+    
+    if (error.includes('Session expired') || 
+        error.includes('Not authenticated') ||
+        error.includes('Authentication required') ||
+        error.includes('401') || 
+        error.includes('403')) {
+      logout();
+      navigate('/login');
+    } else {
+      // Show error notification for non-auth errors      showError(`Failed to load tasks: ${error}`);
+    }
+  }, [error, logout, navigate, showError]);
+
+  // Pre-compute filtered tasks when tasks or user changes
+  useEffect(() => {
+    if (tasks && user) {
+      setCreatedTasks(tasks.filter(task => task.createdByUsername === user.username));
+      setAssignedTasks(tasks.filter(task => task.assignedToUsername === user.username));
+    } else {
+      setCreatedTasks([]);
+      setAssignedTasks([]);
+    }
+  }, [tasks, user]);
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -212,62 +220,63 @@ export function Tasks() {
       <Paper sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>
           Tasks Created by You
-        </Typography>
-        <List>
-          {tasks?.filter(task => task.createdByUsername === user?.username).map(task => (
-            <ListItem key={task.id}>
-              <ListItemText 
-                primary={task.title} 
-                secondary={
-                  <Box>
-                    <Typography variant="body2" component="span">{task.description}</Typography>
-                    {task.assignedToUsername && (
-                      <Typography variant="caption" color="text.secondary" component="span" sx={{ display: 'block' }}>
-                        Assigned to: {task.assignedToUsername}
-                      </Typography>
-                    )}
-                  </Box>
-                }
-                secondaryTypographyProps={{ component: 'div' }}
-              />
-              <ListItemSecondaryAction>
-                <IconButton
-                  edge="end"
-                  aria-label="delete"
-                  onClick={() => handleDeleteTask(task.id)}
-                  color="error"
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </ListItemSecondaryAction>
-            </ListItem>
-          )) || (
+        </Typography>        <List>
+          {createdTasks.length > 0 ? (
+            createdTasks.map(task => (
+              <ListItem key={task.id}>
+                <ListItemText 
+                  primary={task.title} 
+                  secondary={
+                    <Box>
+                      <Typography variant="body2" component="span">{task.description}</Typography>
+                      {task.assignedToUsername && (
+                        <Typography variant="caption" color="text.secondary" component="span" sx={{ display: 'block' }}>
+                          Assigned to: {task.assignedToUsername}
+                        </Typography>
+                      )}
+                    </Box>
+                  }
+                  secondaryTypographyProps={{ component: 'div' }}
+                />
+                <ListItemSecondaryAction>
+                  <IconButton
+                    edge="end"
+                    aria-label="delete"
+                    onClick={() => handleDeleteTask(task.id)}
+                    color="error"
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </ListItemSecondaryAction>
+              </ListItem>
+            ))
+          ) : (
             <ListItem>
               <ListItemText primary="No tasks created by you" />
             </ListItem>
           )}
-        </List>
-
-        <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+        </List>        <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
           Tasks Assigned to You
         </Typography>
         <List>
-          {tasks?.filter(task => task.assignedToUsername === user?.username).map(task => (
-            <ListItem key={task.id}>
-              <ListItemText 
-                primary={task.title} 
-                secondary={
-                  <Box>
-                    <Typography variant="body2" component="span">{task.description}</Typography>
-                    <Typography variant="caption" color="text.secondary" component="span" sx={{ display: 'block' }}>
-                      Created by: {task.createdByUsername}
-                    </Typography>
-                  </Box>
-                }
-                secondaryTypographyProps={{ component: 'div' }}
-              />
-            </ListItem>
-          )) || (
+          {assignedTasks.length > 0 ? (
+            assignedTasks.map(task => (
+              <ListItem key={task.id}>
+                <ListItemText 
+                  primary={task.title} 
+                  secondary={
+                    <Box>
+                      <Typography variant="body2" component="span">{task.description}</Typography>
+                      <Typography variant="caption" color="text.secondary" component="span" sx={{ display: 'block' }}>
+                        Created by: {task.createdByUsername}
+                      </Typography>
+                    </Box>
+                  }
+                  secondaryTypographyProps={{ component: 'div' }}
+                />
+              </ListItem>
+            ))
+          ) : (
             <ListItem>
               <ListItemText primary="No tasks assigned to you" />
             </ListItem>
