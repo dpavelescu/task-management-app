@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
 import { getTasks, createTask, deleteTask } from '../api/tasks';
 import type { Task } from '../types/api';
@@ -8,15 +8,13 @@ export function useSimpleTaskManager() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const refreshTimeoutRef = useRef<number | null>(null);
-  // Simple function to fetch tasks (optimized for performance)
+  // Simple function to fetch tasks
   const fetchTasks = useCallback(async () => {
     if (!isAuthenticated || !token) return;
     
     try {
       setLoading(true);
       setError(null);
-      // Reduced logging for performance
       const fetchedTasks = await getTasks();
       setTasks(fetchedTasks);
     } catch (err) {
@@ -27,12 +25,12 @@ export function useSimpleTaskManager() {
       setLoading(false);
     }
   }, [isAuthenticated, token]);
+
   // Create task function
-  const addTask = useCallback(async (taskData: { title: string; description: string; assignedTo?: number }) => {
+  const addTask = async (taskData: { title: string; description: string; assignedTo?: number }) => {
     try {
       setError(null);
       const newTask = await createTask(taskData);
-      // Add the new task to the state immediately
       setTasks(prev => [...prev, newTask]);
       return newTask;
     } catch (err) {
@@ -41,13 +39,13 @@ export function useSimpleTaskManager() {
       setError(errorMessage);
       throw err;
     }
-  }, []);
+  };
+
   // Delete task function
-  const removeTask = useCallback(async (taskId: number) => {
+  const removeTask = async (taskId: number) => {
     try {
       setError(null);
       await deleteTask(taskId);
-      // Remove the task from state immediately
       setTasks(prev => prev.filter(task => task.id !== taskId));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete task';
@@ -55,31 +53,11 @@ export function useSimpleTaskManager() {
       setError(errorMessage);
       throw err;
     }
-  }, []);  // Refresh tasks with debouncing to prevent multiple rapid API calls
-  const refreshTasks = useCallback(() => {
-    // Reduced logging for performance - only log in development
-    if (import.meta.env.DEV) {
-      console.log('TaskManager: refreshTasks called by SSE notification (debounced)');
-    }
-    
-    // Clear any existing timeout
-    if (refreshTimeoutRef.current) {
-      clearTimeout(refreshTimeoutRef.current);
-    }
-    
-    // Debounce the fetch to prevent rapid successive calls
-    refreshTimeoutRef.current = window.setTimeout(() => {
-      fetchTasks();
-    }, 300); // 300ms debounce
-  }, [fetchTasks]);// Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
-      }
-    };
-  }, []);
-
+  };
+  // Simple refresh tasks function
+  const refreshTasks = () => {
+    fetchTasks();
+  };
   // Initial load
   useEffect(() => {
     if (isAuthenticated) {
@@ -89,15 +67,6 @@ export function useSimpleTaskManager() {
       setError(null);
     }
   }, [isAuthenticated, fetchTasks]);
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
-      }
-    };
-  }, []);
 
   return {
     tasks,
