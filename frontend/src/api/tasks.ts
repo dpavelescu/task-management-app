@@ -1,6 +1,5 @@
 import type { Task } from '../types/api';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+import { apiConfig } from '../config';
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('token');
@@ -54,7 +53,7 @@ export async function getTasks(): Promise<Task[]> {
   try {
     const headers = getAuthHeaders();
     
-    const response = await fetch(`${API_URL}/tasks`, {
+    const response = await fetch(apiConfig.endpoints.tasks.base, {
       headers,
       credentials: 'include', // Include cookies if your backend uses them
     });
@@ -101,7 +100,7 @@ export async function getTasks(): Promise<Task[]> {
 }
 
 export async function createTask(data: CreateTaskData): Promise<Task> {
-  const response = await fetch(`${API_URL}/tasks`, {
+  const response = await fetch(apiConfig.endpoints.tasks.base, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -115,7 +114,7 @@ export async function createTask(data: CreateTaskData): Promise<Task> {
 }
 
 export async function updateTask(id: number, data: UpdateTaskData): Promise<Task> {
-  const response = await fetch(`${API_URL}/tasks/${id}`, {
+  const response = await fetch(apiConfig.endpoints.tasks.byId(id.toString()), {
     method: 'PUT',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -129,7 +128,7 @@ export async function updateTask(id: number, data: UpdateTaskData): Promise<Task
 }
 
 export async function deleteTask(id: number): Promise<void> {
-  const response = await fetch(`${API_URL}/tasks/${id}`, {
+  const response = await fetch(apiConfig.endpoints.tasks.byId(id.toString()), {
     method: 'DELETE',
     headers: getAuthHeaders(),
   });

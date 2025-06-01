@@ -1,0 +1,120 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: todo_postgres_multi
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-todo_db}
+      - POSTGRES_USER=${POSTGRES_USER:-todo_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-todo_password}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    ports:
+      - "${DATABASE_PORT:-5432}:5432"
+    volumes:
+      - postgres_data_multi:/var/lib/postgresql/data
+      - ../db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U todo_user -d todo_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - todo_network_multi
+
+  redis:
+    image: redis:7-alpine
+    container_name: todo_redis_multi
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data_multi:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - todo_network_multi
+
+  # Backend Pod 1
+  backend-1:
+    image: todo-backend:latest
+    container_name: todo_backend_1
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/todo_db
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-todo_user}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-todo_password}
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - SERVER_PORT=8080
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-that-should-be-at-least-32-characters-long}
+      - MESSAGING_POD_ID=backend-1
+    ports:
+      - "8082:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - todo_network_multi
+
+  # Backend Pod 2
+  backend-2:
+    image: todo-backend:latest
+    container_name: todo_backend_2
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/todo_db
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-todo_user}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-todo_password}
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - SERVER_PORT=8080
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-that-should-be-at-least-32-characters-long}
+      - MESSAGING_POD_ID=backend-2
+    ports:
+      - "8083:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - todo_network_multi
+
+  # Load Balancer (Nginx)
+  nginx:
+    image: nginx:alpine
+    container_name: todo_nginx_multi
+    ports:
+      - "8090:80"
+    volumes:
+      - ./nginx-multi-pod.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - backend-1
+      - backend-2
+    networks:
+      - todo_network_multi
+
+networks:
+  todo_network_multi:
+    name: todo_network_multi
+    driver: bridge
+
+volumes:
+  postgres_data_multi:
+  redis_data_multi:

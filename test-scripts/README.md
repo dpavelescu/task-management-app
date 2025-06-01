@@ -9,7 +9,7 @@ This directory contains modern HTTP files for testing the Task Management API us
    - VS Code will prompt to install recommended extensions
 
 2. **Start the Application**:
-   ```bash
+   ```cmd
    npm run dev
    ```
 
@@ -36,6 +36,16 @@ System health checks:
 - Service availability checks
 - Quick status verification
 
+## Configuration
+
+The test scripts use the default development configuration:
+- **Backend URL**: `http://localhost:8080/api`
+- **Frontend URL**: `http://localhost:5173`
+- **Database**: PostgreSQL on port 5432
+- **Redis**: Redis on port 6379
+
+To test with different configurations, update the variables at the top of each `.http` file or see the [Configuration Guide](../docs/configuration-guide.md) for environment setup.
+
 ## Quick Start Testing
 
 1. **Basic Flow**:
@@ -49,16 +59,17 @@ System health checks:
 
 2. **Real-time Testing**:
    ```
-   1. Start frontend: npm run dev:frontend
-   2. Login two users in different browser tabs
-   3. Create/update tasks and observe real-time updates
+   1. Start backend: npm run dev:backend
+   2. Start frontend: npm run dev:frontend
+   3. Login two users in different browser tabs
+   4. Create/update tasks and observe real-time updates
    ```
 
 ## Development Scripts
 
 Use these npm scripts from the root directory:
 
-```bash
+```cmd
 # Start both backend and frontend
 npm run dev
 

@@ -15,7 +15,7 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -30,6 +30,11 @@ export default function Layout({ children }: LayoutProps) {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Task Manager
           </Typography>
+          {user && (
+            <Typography variant="body1" sx={{ mr: 2, color: 'inherit' }}>
+              Welcome, {user.username}
+            </Typography>
+          )}
           <Button color="inherit" onClick={handleLogout}>
             Logout
           </Button>

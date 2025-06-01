@@ -1,16 +1,16 @@
 # Configuration Management Guide
 
 ## Overview
-This document describes how hardcoded values have been externalized to configuration files for better maintainability and deployment flexibility.
+This document describes how configuration is managed across different environments for better maintainability and deployment flexibility.
 
 ## Backend Configuration
 
 ### Environment Profiles
-The backend now supports different environment profiles:
+The backend supports different environment profiles:
 
-- **Development**: `application-dev.properties`
-- **Production**: `application-prod.properties`
-- **Main**: `application.properties` (shared configuration)
+- **Development**: `application-dev.properties` - Verbose logging, SQL debugging
+- **Production**: `application-prod.properties` - Optimized for performance
+- **Main**: `application.properties` - Shared configuration
 
 ### Setting Active Profile
 Use the Spring profile system:
@@ -20,6 +20,9 @@ java -jar app.jar --spring.profiles.active=dev
 
 # Production
 java -jar app.jar --spring.profiles.active=prod
+
+# Docker environment variable
+SPRING_PROFILES_ACTIVE=dev
 ```
 
 ### Environment Variables (Production)
@@ -27,20 +30,27 @@ Production configuration supports environment variable overrides:
 
 ```bash
 # Server
-export SERVER_PORT=8080
+SERVER_PORT=8080
 
 # Database
-export DATABASE_URL=jdbc:postgresql://localhost:5432/todo_db
-export DATABASE_USERNAME=todo_user
-export DATABASE_PASSWORD=todo_password
+DATABASE_URL=jdbc:postgresql://localhost:5432/todo_db
+DATABASE_USERNAME=todo_user
+DATABASE_PASSWORD=todo_password
 
-# CORS
-export CORS_ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
-export CORS_ALLOW_CREDENTIALS=true
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
 
 # JWT
-export JWT_SECRET=your_very_long_and_secure_jwt_secret_key_here
-export JWT_EXPIRATION=86400000
+JWT_SECRET=your_very_long_and_secure_jwt_secret_key_here
+JWT_EXPIRATION=86400000
+
+# CORS
+CORS_ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+CORS_ALLOW_CREDENTIALS=true
+
+# Multi-pod deployment
+MESSAGING_POD_ID=backend-1
 ```
 
 ### CORS Configuration

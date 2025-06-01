@@ -20,132 +20,94 @@ import java.util.Map;
 
 @ControllerAdvice
 @Slf4j
-public class GlobalExceptionHandler {    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex, WebRequest request) {
-        // Skip handling for SSE endpoints to avoid response conflicts
-        String requestUri = request.getDescription(false);
-        if (requestUri.contains("/api/notifications/stream")) {
-            log.debug("Skipping exception handling for SSE endpoint: {}", ex.getMessage());
-            return null; // Let Spring handle it naturally
-        }
-        
-        log.error("Unexpected error occurred", ex);
-        ErrorResponse errorResponse = ErrorResponse.builder()
-            .timestamp(LocalDateTime.now())
-            .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-            .error("Internal Server Error")
-            .message("An unexpected error occurred")
-            .path(request.getDescription(false).replace("uri=", ""))
-            .build();
-        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+public class GlobalExceptionHandler {
+    
+    private static final String SSE_ENDPOINT_PATH = "/api/notifications/stream";
+    
+    // Utility method to check if request is for SSE endpoint
+    private boolean isSSEEndpoint(WebRequest request) {
+        return request.getDescription(false).contains(SSE_ENDPOINT_PATH);
     }
-
-    @ExceptionHandler(HttpMessageNotWritableException.class)
-    public ResponseEntity<ErrorResponse> handleHttpMessageNotWritableException(HttpMessageNotWritableException ex, WebRequest request) {
-        // Skip handling for SSE endpoints
-        String requestUri = request.getDescription(false);
-        if (requestUri.contains("/api/notifications/stream")) {
-            log.debug("Skipping HttpMessageNotWritableException for SSE endpoint");
+    
+    // Utility method to extract path from request
+    private String extractPath(WebRequest request) {
+        return request.getDescription(false).replace("uri=", "");
+    }
+    
+    // Generic error response builder
+    private ResponseEntity<ErrorResponse> buildErrorResponse(
+            Exception ex, WebRequest request, HttpStatus status, String error, String message) {
+        if (isSSEEndpoint(request)) {
+            log.debug("Skipping exception handling for SSE endpoint: {}", ex.getMessage());
             return null;
         }
         
-        log.warn("Message not writable: {}", ex.getMessage());
         ErrorResponse errorResponse = ErrorResponse.builder()
             .timestamp(LocalDateTime.now())
-            .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-            .error("Serialization Error")
-            .message("Failed to serialize response")
-            .path(request.getDescription(false).replace("uri=", ""))
+            .status(status.value())
+            .error(error)
+            .message(message)
+            .path(extractPath(request))
             .build();
-        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(errorResponse, status);
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex, WebRequest request) {
-        log.warn("Invalid argument: {}", ex.getMessage());
-        ErrorResponse errorResponse = ErrorResponse.builder()
-            .timestamp(LocalDateTime.now())
-            .status(HttpStatus.BAD_REQUEST.value())
-            .error("Bad Request")
-            .message(ex.getMessage())
-            .path(request.getDescription(false).replace("uri=", ""))
-            .build();
-        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
-    }
-
-    @ExceptionHandler(UsernameNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleUsernameNotFoundException(UsernameNotFoundException ex, WebRequest request) {
-        log.warn("User not found: {}", ex.getMessage());
-        ErrorResponse errorResponse = ErrorResponse.builder()
-            .timestamp(LocalDateTime.now())
-            .status(HttpStatus.NOT_FOUND.value())
-            .error("User Not Found")
-            .message(ex.getMessage())
-            .path(request.getDescription(false).replace("uri=", ""))
-            .build();
-        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
-    }
-
-    @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ErrorResponse> handleBadCredentialsException(BadCredentialsException ex, WebRequest request) {
-        log.warn("Authentication failed: {}", ex.getMessage());
-        ErrorResponse errorResponse = ErrorResponse.builder()
-            .timestamp(LocalDateTime.now())
-            .status(HttpStatus.UNAUTHORIZED.value())
-            .error("Authentication Failed")
-            .message("Invalid username or password")
-            .path(request.getDescription(false).replace("uri=", ""))
-            .build();
-        return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
-    }
-
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException ex, WebRequest request) {
-        log.warn("Access denied: {}", ex.getMessage());
-        ErrorResponse errorResponse = ErrorResponse.builder()
-            .timestamp(LocalDateTime.now())
-            .status(HttpStatus.FORBIDDEN.value())
-            .error("Access Denied")
-            .message("You don't have permission to access this resource")
-            .path(request.getDescription(false).replace("uri=", ""))
-            .build();
-        return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
-    }
-
-    @ExceptionHandler(SecurityException.class)
-    public ResponseEntity<ErrorResponse> handleSecurityException(SecurityException ex, WebRequest request) {
-        log.warn("Security exception: {}", ex.getMessage());
-        ErrorResponse errorResponse = ErrorResponse.builder()
-            .timestamp(LocalDateTime.now())
-            .status(HttpStatus.FORBIDDEN.value())
-            .error("Access Denied")
-            .message(ex.getMessage())
-            .path(request.getDescription(false).replace("uri=", ""))
-            .build();
-        return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
-    }
-
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(DataIntegrityViolationException ex, WebRequest request) {
-        log.warn("Data integrity violation: {}", ex.getMessage());
-        
-        String message = "Data integrity violation";
-        if (ex.getMessage() != null) {
-            if (ex.getMessage().contains("username")) {
-                message = "Username is already taken";
-            } else if (ex.getMessage().contains("email")) {
-                message = "Email is already in use";
-            }
+    @ExceptionHandler({Exception.class, HttpMessageNotWritableException.class})
+    public ResponseEntity<ErrorResponse> handleGenericExceptions(Exception ex, WebRequest request) {
+        if (ex instanceof HttpMessageNotWritableException) {
+            log.warn("Message not writable: {}", ex.getMessage());
+            return buildErrorResponse(ex, request, HttpStatus.INTERNAL_SERVER_ERROR, 
+                "Serialization Error", "Failed to serialize response");
         }
         
-        ErrorResponse errorResponse = ErrorResponse.builder()
-            .timestamp(LocalDateTime.now())
-            .status(HttpStatus.CONFLICT.value())
-            .error("Conflict")
-            .message(message)
-            .path(request.getDescription(false).replace("uri=", ""))
-            .build();
-        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+        log.error("Unexpected error occurred", ex);
+        return buildErrorResponse(ex, request, HttpStatus.INTERNAL_SERVER_ERROR, 
+            "Internal Server Error", "An unexpected error occurred");
+    }    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleBadRequestExceptions(IllegalArgumentException ex, WebRequest request) {
+        log.warn("Invalid argument: {}", ex.getMessage());
+        return buildErrorResponse(ex, request, HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage());
+    }
+
+    @ExceptionHandler({UsernameNotFoundException.class, TaskNotFoundException.class, UserNotFoundException.class})
+    public ResponseEntity<ErrorResponse> handleNotFoundExceptions(Exception ex, WebRequest request) {
+        log.warn("Resource not found: {}", ex.getMessage());
+        String errorType = ex instanceof UsernameNotFoundException ? "User Not Found" : 
+                          ex instanceof TaskNotFoundException ? "Task Not Found" : "User Not Found";
+        return buildErrorResponse(ex, request, HttpStatus.NOT_FOUND, errorType, ex.getMessage());
+    }
+
+    @ExceptionHandler({BadCredentialsException.class, AuthenticationException.class})
+    public ResponseEntity<ErrorResponse> handleAuthenticationExceptions(Exception ex, WebRequest request) {
+        log.warn("Authentication failed: {}", ex.getMessage());
+        String message = ex instanceof BadCredentialsException ? "Invalid username or password" : ex.getMessage();
+        return buildErrorResponse(ex, request, HttpStatus.UNAUTHORIZED, "Authentication Failed", message);
+    }
+
+    @ExceptionHandler({AccessDeniedException.class, SecurityException.class, TaskPermissionException.class})
+    public ResponseEntity<ErrorResponse> handleAccessDeniedExceptions(Exception ex, WebRequest request) {
+        log.warn("Access denied: {}", ex.getMessage());
+        String message = ex instanceof AccessDeniedException ? "You don't have permission to access this resource" : ex.getMessage();
+        String errorType = ex instanceof TaskPermissionException ? "Permission Denied" : "Access Denied";
+        return buildErrorResponse(ex, request, HttpStatus.FORBIDDEN, errorType, message);
+    }    @ExceptionHandler({DataIntegrityViolationException.class, TaskAssignmentException.class})
+    public ResponseEntity<ErrorResponse> handleConflictExceptions(Exception ex, WebRequest request) {
+        log.warn("Conflict error: {}", ex.getMessage());
+        
+        if (ex instanceof DataIntegrityViolationException) {
+            String message = "Data integrity violation";
+            if (ex.getMessage() != null) {
+                if (ex.getMessage().contains("username")) {
+                    message = "Username is already taken";
+                } else if (ex.getMessage().contains("email")) {
+                    message = "Email is already in use";
+                }
+            }
+            return buildErrorResponse(ex, request, HttpStatus.CONFLICT, "Conflict", message);
+        }
+        
+        // TaskAssignmentException
+        return buildErrorResponse(ex, request, HttpStatus.BAD_REQUEST, "Assignment Error", ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -164,75 +126,10 @@ public class GlobalExceptionHandler {    @ExceptionHandler(Exception.class)
             .status(HttpStatus.BAD_REQUEST.value())
             .error("Validation Failed")
             .message("Input validation failed")
-            .path(request.getDescription(false).replace("uri=", ""))
+            .path(extractPath(request))
             .validationErrors(errors)
             .build();
         
-        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
-    }
-
-    @ExceptionHandler(TaskNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleTaskNotFoundException(TaskNotFoundException ex, WebRequest request) {
-        log.warn("Task not found: {}", ex.getMessage());
-        ErrorResponse errorResponse = ErrorResponse.builder()
-            .timestamp(LocalDateTime.now())
-            .status(HttpStatus.NOT_FOUND.value())
-            .error("Task Not Found")
-            .message(ex.getMessage())
-            .path(request.getDescription(false).replace("uri=", ""))
-            .build();
-        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
-    }
-
-    @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleUserNotFoundException(UserNotFoundException ex, WebRequest request) {
-        log.warn("User not found: {}", ex.getMessage());
-        ErrorResponse errorResponse = ErrorResponse.builder()
-            .timestamp(LocalDateTime.now())
-            .status(HttpStatus.NOT_FOUND.value())
-            .error("User Not Found")
-            .message(ex.getMessage())
-            .path(request.getDescription(false).replace("uri=", ""))
-            .build();
-        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
-    }
-
-    @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<ErrorResponse> handleAuthenticationException(AuthenticationException ex, WebRequest request) {
-        log.warn("Authentication error: {}", ex.getMessage());
-        ErrorResponse errorResponse = ErrorResponse.builder()
-            .timestamp(LocalDateTime.now())
-            .status(HttpStatus.UNAUTHORIZED.value())
-            .error("Authentication Error")
-            .message(ex.getMessage())
-            .path(request.getDescription(false).replace("uri=", ""))
-            .build();
-        return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
-    }
-
-    @ExceptionHandler(TaskPermissionException.class)
-    public ResponseEntity<ErrorResponse> handleTaskPermissionException(TaskPermissionException ex, WebRequest request) {
-        log.warn("Task permission denied: {}", ex.getMessage());
-        ErrorResponse errorResponse = ErrorResponse.builder()
-            .timestamp(LocalDateTime.now())
-            .status(HttpStatus.FORBIDDEN.value())
-            .error("Permission Denied")
-            .message(ex.getMessage())
-            .path(request.getDescription(false).replace("uri=", ""))
-            .build();
-        return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
-    }
-
-    @ExceptionHandler(TaskAssignmentException.class)
-    public ResponseEntity<ErrorResponse> handleTaskAssignmentException(TaskAssignmentException ex, WebRequest request) {
-        log.warn("Task assignment error: {}", ex.getMessage());
-        ErrorResponse errorResponse = ErrorResponse.builder()
-            .timestamp(LocalDateTime.now())
-            .status(HttpStatus.BAD_REQUEST.value())
-            .error("Assignment Error")
-            .message(ex.getMessage())
-            .path(request.getDescription(false).replace("uri=", ""))
-            .build();
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 }

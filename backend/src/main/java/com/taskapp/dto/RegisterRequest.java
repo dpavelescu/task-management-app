@@ -18,17 +18,4 @@ public class RegisterRequest {
     @NotBlank
     @Size(min = 6, max = 40)
     private String password;
-
-    // Explicit getters in case Lombok is not working
-    public String getUsername() {
-        return username;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public String getPassword() {
-        return password;
-    }
 }

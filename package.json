@@ -13,7 +13,12 @@
     "test:api": "echo \"Open test-scripts/api-tests.http in VS Code with REST Client extension\"",
     "test:sse": "echo \"Open test-scripts/sse-tests.http for SSE testing instructions\"",
     "build": "cd frontend && npm run build",
-    "clean": "cd docker && docker-compose down -v && docker system prune -f"
+    "clean": "cd docker && docker-compose down -v && docker system prune -f",
+    "multi-pod:start": "cd docker && docker-compose -f docker-compose.multi-pod.yml up -d --build",
+    "multi-pod:stop": "cd docker && docker-compose -f docker-compose.multi-pod.yml down",
+    "multi-pod:logs": "cd docker && docker-compose -f docker-compose.multi-pod.yml logs -f",
+    "multi-pod:test": "echo \"Multi-pod testing: Open test-scripts/api-tests.http and test against http://localhost:8090\"",
+    "multi-pod:redis-monitor": "docker exec todo_redis_multi redis-cli monitor"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:8080/api';
+import { apiConfig } from '../config';
 
 export interface User {
   id: number;
@@ -13,7 +13,7 @@ export const getUsers = async (): Promise<User[]> => {
     throw new Error('No authentication token found');
   }
 
-  const response = await fetch(`${API_BASE}/users`, {
+  const response = await fetch(apiConfig.endpoints.users.base, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,

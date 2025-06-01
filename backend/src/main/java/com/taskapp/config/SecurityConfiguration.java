@@ -52,6 +52,7 @@ public class SecurityConfiguration {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/api/notifications/stream").permitAll() // Allow SSE without JWT filter
+                .requestMatchers("/actuator/health", "/actuator/health/**").permitAll() // Allow health check endpoints
                 .anyRequest().authenticated() // Users endpoint requires authentication
             )
             .sessionManagement(session -> session

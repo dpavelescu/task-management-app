@@ -94,23 +94,29 @@ public class NotificationController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-    
-    @GetMapping("/status")
+      @GetMapping("/status")
     public ResponseEntity<NotificationStatus> getStatus() {
         int activeConnections = notificationService.getActiveConnectionCount();
-        return ResponseEntity.ok(new NotificationStatus(activeConnections));
+        boolean messagingHealthy = notificationService.isMessagingHealthy();
+        return ResponseEntity.ok(new NotificationStatus(activeConnections, messagingHealthy));
     }
     
     // DTO for status response
     public static class NotificationStatus {
         private final int activeConnections;
+        private final boolean messagingHealthy;
         
-        public NotificationStatus(int activeConnections) {
+        public NotificationStatus(int activeConnections, boolean messagingHealthy) {
             this.activeConnections = activeConnections;
+            this.messagingHealthy = messagingHealthy;
         }
         
         public int getActiveConnections() {
             return activeConnections;
+        }
+        
+        public boolean isMessagingHealthy() {
+            return messagingHealthy;
         }
     }
 }

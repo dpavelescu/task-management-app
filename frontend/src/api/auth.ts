@@ -1,3 +1,5 @@
+import { apiConfig } from '../config';
+
 interface LoginRequest {
   username: string;
   password: string;
@@ -16,10 +18,8 @@ export interface AuthResponse {
   };
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-
 export async function login(data: LoginRequest): Promise<AuthResponse> {
-  const response = await fetch(`${API_URL}/auth/login`, {
+  const response = await fetch(apiConfig.endpoints.auth.login, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -45,7 +45,7 @@ export async function login(data: LoginRequest): Promise<AuthResponse> {
 
 export async function register(data: RegisterRequest): Promise<AuthResponse> {
   try {
-    const response = await fetch(`${API_URL}/auth/register`, {
+    const response = await fetch(apiConfig.endpoints.auth.register, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

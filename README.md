@@ -1,6 +1,6 @@
 # Real-Time Task Management Application
 
-A full-stack task management application with real-time notifications, built with Spring Boot and React.
+A full-stack task management application with real-time notifications, built with Spring Boot and React. Features multi-pod deployment support with Redis pub/sub messaging for scalable real-time notifications.
 
 ## Features
 
@@ -11,6 +11,7 @@ A full-stack task management application with real-time notifications, built wit
 - **Task Views**: "My Tasks" (assigned to me) and "Managed Tasks" (created by me)
 - **Task Status Tracking**: PENDING → IN_PROGRESS → COMPLETED workflow
 - **Priority Management**: LOW, MEDIUM, HIGH, URGENT priorities
+- **Multi-Pod Support**: Scalable deployment with Redis pub/sub messaging
 
 ## Tech Stack
 
@@ -18,7 +19,7 @@ A full-stack task management application with real-time notifications, built wit
 - **Framework**: Spring Boot 3.x
 - **Database**: PostgreSQL with JPA/Hibernate
 - **Security**: JWT-based authentication with refresh tokens
-- **Real-time**: Server-Sent Events (SSE)
+- **Real-time**: Server-Sent Events (SSE) with Redis pub/sub
 - **Build Tool**: Maven
 
 ### Frontend
@@ -29,8 +30,9 @@ A full-stack task management application with real-time notifications, built wit
 
 ### Infrastructure
 - **Containerization**: Docker & Docker Compose
-- **Deployment**: Helm charts for Kubernetes
 - **Database**: PostgreSQL
+- **Messaging**: Redis pub/sub for real-time notifications
+- **Load Balancing**: Nginx for multi-pod deployments
 
 ## Quick Start
 
@@ -43,31 +45,49 @@ A full-stack task management application with real-time notifications, built wit
 ### 1. Clone Repository
 ```bash
 git clone <repository-url>
-cd ToDo
+cd task-management-app
 ```
 
-### 2. Start Backend & Database
-```bash
-cd docker
-docker-compose up -d
-```
-
-### 3. Start Frontend
-```bash
-cd frontend
-npm install
+### 2. Start Application (Single Instance)
+```cmd
 npm run dev
+```
+This starts both backend (Docker with auto-build) and frontend (local dev server).
+
+### 3. Start Multi-Pod Deployment
+```cmd
+npm run multi-pod:start
+```
+This automatically builds the backend Docker image and starts multiple backend instances with load balancing.
+
+#### Manual Build (Optional)
+For custom builds or development:
+```cmd
+# Backend compilation (optional - Docker handles this)
+cd backend && mvn clean package -DskipTests && cd ..
+
+# Frontend build (for production)
+cd frontend && npm run build && cd ..
 ```
 
 ### 4. Access Application
 - **Frontend**: http://localhost:5173
 - **Backend API**: http://localhost:8080
+- **Load Balanced API** (multi-pod): http://localhost:8090
 - **Database**: localhost:5432
+
+## Documentation
+
+- 📖 [Configuration Guide](docs/configuration-guide.md) - Environment setup and configuration
+- 🚀 [Multi-Pod Deployment](docs/multi-pod-deployment.md) - Scalable deployment guide
+- 🧪 [API Testing](test-scripts/README.md) - API testing and validation
+- 🛠️ [Backend Documentation](backend/README.md) - Backend API and development
+- ⚛️ [Frontend Documentation](frontend/README.md) - React application setup
 
 ## Project Structure
 
 ```
-ToDo/
+task-management-app/
 ├── backend/                 # Spring Boot application
 │   ├── src/main/java/com/taskapp/
 │   │   ├── entity/         # JPA entities
@@ -78,7 +98,8 @@ ToDo/
 │   │   ├── repository/     # Data access layer
 │   │   ├── security/       # Authentication & authorization
 │   │   ├── exception/      # Custom exceptions
-│   │   └── mapper/         # Entity-DTO conversions
+│   │   ├── mapper/         # Entity-DTO conversions
+│   │   └── config/         # Spring configuration
 │   └── src/main/resources/
 │       ├── application.properties
 │       ├── application-dev.properties
@@ -91,17 +112,22 @@ ToDo/
 │   │   ├── contexts/       # React contexts
 │   │   ├── api/            # HTTP client functions
 │   │   ├── types/          # TypeScript interfaces
+│   │   ├── config/         # Configuration
 │   │   └── utils/          # Helper functions
 │   └── package.json
 ├── db/                     # Database initialization
 │   └── init/
 │       └── 01_init.sql
 ├── docker/                 # Docker configuration
-│   └── docker-compose.yml
-├── helm/                   # Kubernetes Helm charts
-│   ├── backend/
-│   ├── database/
-│   └── redis/
+│   ├── docker-compose.yml           # Single instance
+│   ├── docker-compose.multi-pod.yml # Multi-pod deployment
+│   └── nginx-multi-pod.conf         # Load balancer config
+├── scripts/                # Deployment scripts
+│   ├── deploy-docker.bat           # Windows deployment
+│   └── test-multi-pod.bat          # Multi-pod testing
+├── test-scripts/           # API testing
+│   ├── api-tests.http
+│   └── sse-tests.http
 └── docs/                   # Documentation
 
 ```
@@ -127,19 +153,33 @@ ToDo/
 
 ## Development
 
+### Available Commands
+```bash
+# Start development environment
+npm run dev                    # Backend (Docker) + Frontend (local)
+
+# Multi-pod deployment
+npm run multi-pod:start        # Start multi-pod environment
+npm run multi-pod:test         # Test multi-pod functionality
+npm run multi-pod:logs         # View container logs
+npm run multi-pod:stop         # Stop multi-pod environment
+
+# Development utilities
+npm run dev:logs               # View backend logs
+npm run restart                # Restart backend container
+npm run status                 # Check service status
+npm run clean                  # Clean Docker volumes and images
+```
+
 ### Backend Development
 The backend runs in Docker for consistent development environment:
 
 ```bash
-cd docker
-docker-compose up -d
-
 # View logs
-docker-compose logs -f backend
+npm run dev:logs
 
 # Rebuild after code changes
-docker-compose build backend
-docker-compose up -d backend
+npm run restart
 ```
 
 ### Frontend Development
@@ -157,9 +197,9 @@ npm run build
 Connect to PostgreSQL:
 - **Host**: localhost
 - **Port**: 5432
-- **Database**: taskapp
-- **Username**: postgres
-- **Password**: password
+- **Database**: todo_db
+- **Username**: todo_user
+- **Password**: todo_password
 
 ## Environment Configuration
 
@@ -175,10 +215,11 @@ Connect to PostgreSQL:
 
 ## Real-Time Architecture
 
-The application uses a notification-trigger pattern:
-1. Backend sends lightweight notification via SSE when tasks change
-2. Frontend receives notification and fetches updated data via REST API
-3. This ensures data consistency and reduces payload size
+The application uses a notification-trigger pattern with Redis pub/sub for multi-pod scaling:
+1. Backend publishes lightweight notification via Redis when tasks change
+2. All backend instances receive the notification via Redis subscription
+3. Frontend receives notification via SSE and fetches updated data via REST API
+4. This ensures data consistency and supports horizontal scaling
 
 ### Notification Types
 - `TASK_CREATED` - New task created
@@ -189,35 +230,35 @@ The application uses a notification-trigger pattern:
 
 ## Deployment
 
-### Local Development
+### Single Instance (Development)
 ```bash
-docker-compose up -d
-cd frontend && npm run dev
+npm run dev
 ```
 
-### Production (Kubernetes)
+### Multi-Pod (Production-like)
 ```bash
-# Deploy backend
-helm install taskapp-backend ./helm/backend
-
-# Deploy database
-helm install taskapp-db ./helm/database
+npm run multi-pod:start
 ```
+
+Access points:
+- **Load Balanced**: http://localhost:8090
+- **Backend Pod 1**: http://localhost:8082
+- **Backend Pod 2**: http://localhost:8083
 
 ## Testing
 
-### Manual Testing Scripts
+### Manual Testing
 ```bash
-cd test-scripts
+# API testing with VS Code REST Client
+# Open test-scripts/api-tests.http
 
-# Test backend health
-./check-status.bat
+# SSE testing
+# Open test-scripts/sse-tests.http
+```
 
-# Test user registration
-./test-backend.bat
-
-# Test task operations
-./test-task-deletion.bat
+### Multi-Pod Testing
+```bash
+npm run multi-pod:test
 ```
 
 ## Contributing
@@ -230,4 +271,4 @@ cd test-scripts
 
 ## License
 
-[Your License Here]
+MIT License

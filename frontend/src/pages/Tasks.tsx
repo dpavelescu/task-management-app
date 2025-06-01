@@ -1,13 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Button,
   TextField,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  IconButton,
   Typography,
   Paper,
   CircularProgress,
@@ -16,13 +11,14 @@ import {
   Select,
   MenuItem,
 } from '@mui/material';
-import { Delete as DeleteIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { getUsers } from '../api/users';
 import { useAuth } from '../hooks/useAuth';
 import { useSimpleTaskManager } from '../hooks/useSimpleTaskManager';
 import { useSimpleSSE } from '../hooks/useSimpleSSE';
+import { useDebounceInput } from '../hooks/useDebounceInput';
 import { useErrorNotification } from '../components/useErrorNotification';
+import TaskList from '../components/TaskList';
 import type { User } from '../types/api';
 
 // Export Tasks component as named export to match App.tsx import
@@ -30,18 +26,31 @@ export function Tasks() {
   const navigate = useNavigate();
   const { logout, isAuthenticated, isInitialized, user } = useAuth();
   const { showError, showSuccess } = useErrorNotification();
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  
+  // Use debounced inputs for better performance
+  const titleInput = useDebounceInput();
+  const descriptionInput = useDebounceInput();
   const [assignedToId, setAssignedToId] = useState<number | ''>('');
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   
   // Use simplified task manager
   const { tasks, loading, error, addTask, removeTask, refreshTasks } = useSimpleTaskManager();
-  
-  // Use simplified SSE
+    // Use simplified SSE
   const { isConnected } = useSimpleSSE({ onTaskUpdate: refreshTasks });
-    // Check authentication on mount and when auth state changes
+
+  // Memoize expensive filtering operations to prevent re-computation on every render
+  const createdTasks = useMemo(() => 
+    tasks?.filter(task => task.createdByUsername === user?.username) || [], 
+    [tasks, user?.username]
+  );
+  
+  const assignedTasks = useMemo(() => 
+    tasks?.filter(task => task.assignedToUsername === user?.username) || [], 
+    [tasks, user?.username]
+  );
+
+  // Check authentication on mount and when auth state changes
   useEffect(() => {
     // Wait for auth to initialize before checking
     if (!isInitialized) {
@@ -94,26 +103,26 @@ export function Tasks() {
       }
     }
   }, [error, logout, navigate, showError]);
-
-  const handleAddTask = async (e: React.FormEvent) => {
+  // Memoize handlers to prevent unnecessary re-renders
+  const handleAddTask = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await addTask({
-        title,
-        description,
+        title: titleInput.value,
+        description: descriptionInput.value,
         assignedTo: assignedToId || undefined,
       });
-      setTitle('');
-      setDescription('');
+      titleInput.reset();
+      descriptionInput.reset();
       setAssignedToId('');
       showSuccess('Task created successfully!');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create task';
       showError(errorMessage);
     }
-  };
+  }, [titleInput, descriptionInput, assignedToId, addTask, showSuccess, showError]);
   
-  const handleDeleteTask = async (taskId: number) => {
+  const handleDeleteTask = useCallback(async (taskId: number) => {
     if (window.confirm('Are you sure you want to delete this task?')) {
       try {
         await removeTask(taskId);
@@ -121,8 +130,15 @@ export function Tasks() {
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to delete task';
         showError(errorMessage);
-      }    }
-  };
+      }
+    }
+  }, [removeTask, showSuccess, showError]);
+
+  const handleAssigneeChange = useCallback((event: { target: { value: unknown } }) => {
+    setAssignedToId(event.target.value as number | '');
+  }, []);
+
+  // Direct handling of task deletion is now provided to TaskList component
     
   // Show loading while auth is initializing
   if (!isInitialized) {
@@ -133,17 +149,13 @@ export function Tasks() {
       </Box>
     );
   }
-  
-  if (loading) {
+    if (loading) {
     return (
       <Box display="flex" justifyContent="center" mt={4}>
         <CircularProgress />
       </Box>
     );
   }
-
-  const createdTasks = tasks?.filter(task => task.createdByUsername === user?.username) || [];
-  const assignedTasks = tasks?.filter(task => task.assignedToUsername === user?.username) || [];
 
   return (
     <Box sx={{ maxWidth: 800, mx: 'auto', p: 3 }}>
@@ -163,12 +175,11 @@ export function Tasks() {
       <Paper sx={{ p: 3, mb: 3 }}>
         <Typography variant="h6" gutterBottom>
           Add New Task
-        </Typography>
-        <Box component="form" onSubmit={handleAddTask}>          <TextField
+        </Typography>        <Box component="form" onSubmit={handleAddTask}>          <TextField
             fullWidth
             label="Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            value={titleInput.value}
+            onChange={titleInput.handleChange}
             margin="normal"
             required
             error={loading}
@@ -177,8 +188,8 @@ export function Tasks() {
           <TextField
             fullWidth
             label="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            value={descriptionInput.value}
+            onChange={descriptionInput.handleChange}
             margin="normal"
             multiline
             rows={3}
@@ -186,11 +197,11 @@ export function Tasks() {
             disabled={loading}
           />
           <FormControl fullWidth margin="normal">
-            <InputLabel id="assignee-select-label">Assign to (optional)</InputLabel>
-            <Select
-              labelId="assignee-select-label"              value={assignedToId}
+            <InputLabel id="assignee-select-label">Assign to (optional)</InputLabel>            <Select
+              labelId="assignee-select-label"
+              value={assignedToId}
               label="Assign to (optional)"
-              onChange={(e) => setAssignedToId(e.target.value as number | '')}
+              onChange={handleAssigneeChange}
               disabled={loading || loadingUsers}
             >
               <MenuItem value="">
@@ -213,73 +224,23 @@ export function Tasks() {
             {loading ? 'Adding...' : 'Add Task'}
           </Button>
         </Box>
-      </Paper>
-
-      <Paper sx={{ p: 3 }}>        <Typography variant="h6" gutterBottom>
+      </Paper>      <Paper sx={{ p: 3 }}>        <Typography variant="h6" gutterBottom>
           Tasks Created by You
         </Typography>
-        <List>
-          {createdTasks.length > 0 ? (
-            createdTasks.map(task => (              <ListItem key={task.id}>
-                <ListItemText 
-                  primary={task.title} 
-                  secondary={
-                    <Box>
-                      <Typography variant="body2" component="span">{task.description}</Typography>
-                      {task.assignedToUsername && (
-                        <Typography variant="caption" color="text.secondary" component="span" sx={{ display: 'block' }}>
-                          Assigned to: {task.assignedToUsername}
-                        </Typography>
-                      )}
-                    </Box>
-                  }
-                  secondaryTypographyProps={{ component: 'div' }}
-                />
-                <ListItemSecondaryAction>
-                  <IconButton
-                    edge="end"
-                    aria-label="delete"
-                    onClick={() => handleDeleteTask(task.id)}
-                    color="error"
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </ListItemSecondaryAction>
-              </ListItem>
-            ))
-          ) : (
-            <ListItem>
-              <ListItemText primary="No tasks created by you" />
-            </ListItem>
-          )}
-        </List>
+        <TaskList 
+          tasks={createdTasks} 
+          emptyMessage="No tasks created by you" 
+          showDeleteButtons={true}
+          onDeleteTask={handleDeleteTask}
+        />
 
         <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
           Tasks Assigned to You
         </Typography>
-        <List>
-          {assignedTasks.length > 0 ? (
-            assignedTasks.map(task => (              <ListItem key={task.id}>
-                <ListItemText 
-                  primary={task.title} 
-                  secondary={
-                    <Box>
-                      <Typography variant="body2" component="span">{task.description}</Typography>
-                      <Typography variant="caption" color="text.secondary" component="span" sx={{ display: 'block' }}>
-                        Created by: {task.createdByUsername}
-                      </Typography>
-                    </Box>
-                  }
-                  secondaryTypographyProps={{ component: 'div' }}
-                />
-              </ListItem>
-            ))
-          ) : (
-            <ListItem>
-              <ListItemText primary="No tasks assigned to you" />
-            </ListItem>
-          )}
-        </List>
+        <TaskList 
+          tasks={assignedTasks} 
+          emptyMessage="No tasks assigned to you" 
+        />
       </Paper>
     </Box>
   );

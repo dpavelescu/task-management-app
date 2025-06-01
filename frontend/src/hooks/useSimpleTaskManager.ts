@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './useAuth';
 import { getTasks, createTask, deleteTask } from '../api/tasks';
 import type { Task } from '../types/api';
@@ -7,16 +7,17 @@ export function useSimpleTaskManager() {
   const { token, isAuthenticated } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);  // Simple function to fetch tasks
+  const [error, setError] = useState<string | null>(null);
+  const refreshTimeoutRef = useRef<number | null>(null);
+  // Simple function to fetch tasks (optimized for performance)
   const fetchTasks = useCallback(async () => {
     if (!isAuthenticated || !token) return;
     
     try {
       setLoading(true);
       setError(null);
-      console.log('TaskManager: Fetching tasks...');
+      // Reduced logging for performance
       const fetchedTasks = await getTasks();
-      console.log('TaskManager: Fetched tasks:', fetchedTasks.length, 'tasks:', fetchedTasks.map(t => `${t.id}:${t.title}`));
       setTasks(fetchedTasks);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch tasks';
@@ -54,11 +55,30 @@ export function useSimpleTaskManager() {
       setError(errorMessage);
       throw err;
     }
-  }, []);  // Refresh tasks (called by SSE notifications)
+  }, []);  // Refresh tasks with debouncing to prevent multiple rapid API calls
   const refreshTasks = useCallback(() => {
-    console.log('TaskManager: refreshTasks called by SSE notification');
-    fetchTasks();
-  }, [fetchTasks]);
+    // Reduced logging for performance - only log in development
+    if (import.meta.env.DEV) {
+      console.log('TaskManager: refreshTasks called by SSE notification (debounced)');
+    }
+    
+    // Clear any existing timeout
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+    }
+    
+    // Debounce the fetch to prevent rapid successive calls
+    refreshTimeoutRef.current = window.setTimeout(() => {
+      fetchTasks();
+    }, 300); // 300ms debounce
+  }, [fetchTasks]);// Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Initial load
   useEffect(() => {
@@ -69,6 +89,15 @@ export function useSimpleTaskManager() {
       setError(null);
     }
   }, [isAuthenticated, fetchTasks]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return {
     tasks,

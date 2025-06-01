@@ -39,7 +39,6 @@ export function EnhancedAuthProvider({
     isInitialized: false,
     lastTokenCheck: 0
   });
-
   // Refs for cleanup and intervals
   const tokenCheckIntervalRef = useRef<number | null>(null);
   const isNavigatingRef = useRef(false);
@@ -200,12 +199,11 @@ export function EnhancedAuthProvider({
   useEffect(() => {
     if (!authState.isInitialized) return;
 
-    const startTokenChecking = () => {
-      if (tokenCheckIntervalRef.current) {
+    const startTokenChecking = () => {      if (tokenCheckIntervalRef.current) {
         clearInterval(tokenCheckIntervalRef.current);
       }
-
-      tokenCheckIntervalRef.current = setInterval(() => {
+      
+      tokenCheckIntervalRef.current = window.setInterval(() => {
         if (authState.token) {
           checkTokenValidity();
         }
