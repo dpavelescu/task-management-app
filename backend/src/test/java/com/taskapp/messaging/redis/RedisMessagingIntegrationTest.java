@@ -3,19 +3,14 @@ package com.taskapp.messaging.redis;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.taskapp.dto.NotificationEvent;
-import com.taskapp.messaging.MessageHandler;
 import com.taskapp.service.SSEConnectionManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.springframework.data.redis.connection.Message;
-import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.listener.ChannelTopic;
-import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -27,23 +22,18 @@ import static org.mockito.Mockito.*;
  * Integration tests for Redis messaging components.
  * Tests the complete serialization/deserialization flow through Redis pub/sub.
  */
-class RedisMessagingIntegrationTest {
-      private RedisMessagePublisher publisher;
+class RedisMessagingIntegrationTest {    private RedisMessagePublisher publisher;
     private RedisMessageConsumer consumer;
     private RedisTemplate<String, String> redisTemplate;
-    private RedisMessageListenerContainer listenerContainer;
     private SSEConnectionManager sseConnectionManager;
     private ObjectMapper objectMapper;
-    
+      @SuppressWarnings("unchecked")
     @BeforeEach
     void setUp() {
         // Setup ObjectMapper with time module
         objectMapper = new ObjectMapper();
-        objectMapper.registerModule(new JavaTimeModule());
-        
-        // Mock Redis components
+        objectMapper.registerModule(new JavaTimeModule());        // Mock Redis components
         redisTemplate = mock(RedisTemplate.class);
-        listenerContainer = mock(RedisMessageListenerContainer.class);
         sseConnectionManager = mock(SSEConnectionManager.class);
           
         // Create real instances

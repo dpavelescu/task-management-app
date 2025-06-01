@@ -132,10 +132,7 @@ class EndToEndRedisMessagingTest {    @Mock
         Task task = mock(Task.class);
         when(task.getId()).thenReturn(789L);
         when(task.getTitle()).thenReturn("Multi-Type Test Task");
-        when(task.getCreatedBy()).thenReturn(creator);
-        when(task.getAssignedTo()).thenReturn(user);
-        
-        String topic = "test-notifications";
+        when(task.getCreatedBy()).thenReturn(creator);        when(task.getAssignedTo()).thenReturn(user);
         
         // Test each notification type
         NotificationEvent[] testEvents = {
@@ -175,12 +172,10 @@ class EndToEndRedisMessagingTest {    @Mock
         
         Task task = mock(Task.class);
         when(task.getId()).thenReturn(123L);
-        when(task.getTitle()).thenReturn("Ordering Test Task");
-        when(task.getCreatedBy()).thenReturn(user);
+        when(task.getTitle()).thenReturn("Ordering Test Task");        when(task.getCreatedBy()).thenReturn(user);
         when(task.getAssignedTo()).thenReturn(user);
         
-        String topic = "ordering-test";
-          // Create multiple events with sufficient timing differences
+        // Create multiple events with sufficient timing differences
         NotificationEvent event1 = notificationFactory.createTaskCreatedNotification(task, user);
         Thread.sleep(1000); // Ensure different timestamps (1 second difference)
         NotificationEvent event2 = notificationFactory.createTaskUpdatedNotification(task, user);
