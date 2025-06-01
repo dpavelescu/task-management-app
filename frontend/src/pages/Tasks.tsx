@@ -36,12 +36,9 @@ export function Tasks() {
   const [description, setDescription] = useState('');
   const [assignedToId, setAssignedToId] = useState<number | ''>('');
   const [users, setUsers] = useState<User[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
-  
-  // Use simplified task manager
+  const [loadingUsers, setLoadingUsers] = useState(false);  // Use simplified task manager
   const { tasks, loading, error, addTask, removeTask, refreshTasks } = useSimpleTaskManager();
-  
-  // Use simplified SSE
+    // Use simplified SSE
   const { isConnected } = useSimpleSSE({ onTaskUpdate: refreshTasks });
 
   // Check authentication on mount and when auth state changes

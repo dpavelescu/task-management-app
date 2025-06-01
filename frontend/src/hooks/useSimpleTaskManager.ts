@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
 import { getTasks, createTask, deleteTask } from '../api/tasks';
 import type { Task } from '../types/api';
@@ -7,9 +7,8 @@ export function useSimpleTaskManager() {
   const { token, isAuthenticated } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // Simple function to fetch tasks
-  const fetchTasks = useCallback(async () => {
+  const [error, setError] = useState<string | null>(null);  // Simple function to fetch tasks
+  const fetchTasks = async () => {
     if (!isAuthenticated || !token) return;
     
     try {
@@ -24,7 +23,7 @@ export function useSimpleTaskManager() {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, token]);
+  };
 
   // Create task function
   const addTask = async (taskData: { title: string; description: string; assignedTo?: number }) => {
@@ -57,8 +56,7 @@ export function useSimpleTaskManager() {
   // Simple refresh tasks function
   const refreshTasks = () => {
     fetchTasks();
-  };
-  // Initial load
+  };  // Initial load
   useEffect(() => {
     if (isAuthenticated) {
       fetchTasks();
@@ -66,7 +64,8 @@ export function useSimpleTaskManager() {
       setTasks([]);
       setError(null);
     }
-  }, [isAuthenticated, fetchTasks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   return {
     tasks,

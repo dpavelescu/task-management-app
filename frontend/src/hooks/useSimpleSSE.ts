@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from './useAuth';
 
 interface SimpleSSEHookProps {
@@ -9,6 +9,10 @@ export function useSimpleSSE({ onTaskUpdate }: SimpleSSEHookProps) {
   const { token, user } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const callbackRef = useRef(onTaskUpdate);
+  
+  // Update callback ref when it changes
+  callbackRef.current = onTaskUpdate;
 
   useEffect(() => {
     if (!token || !user) {
@@ -34,9 +38,8 @@ export function useSimpleSSE({ onTaskUpdate }: SimpleSSEHookProps) {
 
     eventSource.addEventListener('notification', (event) => {
       try {
-        const notification = JSON.parse(event.data);
-        if (notification.type && notification.type.includes('TASK_')) {
-          onTaskUpdate();
+        const notification = JSON.parse(event.data);        if (notification.type && notification.type.includes('TASK_')) {
+          callbackRef.current();
         }
       } catch (error) {
         console.error('Error parsing notification:', error);
@@ -51,7 +54,7 @@ export function useSimpleSSE({ onTaskUpdate }: SimpleSSEHookProps) {
     return () => {
       eventSource.close();
     };
-  }, [token, user, onTaskUpdate]);
+  }, [token, user]);
 
   return {
     isConnected
