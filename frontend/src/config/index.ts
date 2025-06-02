@@ -40,7 +40,8 @@ interface AppConfig {
 
 // Get configuration from environment variables with fallbacks
 const getEnvVar = (key: string, defaultValue: string = ''): string => {
-  return import.meta.env[key] || defaultValue;
+  const value = import.meta.env[key] || defaultValue;
+  return value;
 };
 
 // Base configuration
@@ -107,8 +108,4 @@ export const isDevelopment = (): boolean => {
 };
 
 // Log configuration in development
-if (isDevelopment()) {
-  console.log('App Configuration:', config);
-}
-
 export default config;

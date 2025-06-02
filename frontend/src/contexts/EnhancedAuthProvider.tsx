@@ -225,7 +225,8 @@ export function EnhancedAuthProvider({
   }, [initializeAuth]);
 
   // Listen for storage changes (multiple tabs)
-  useEffect(() => {    const handleStorageChange = (event: StorageEvent) => {
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
       if (event.key === 'token' || event.key === 'user') {
         initializeAuth();
       }
@@ -234,6 +235,16 @@ export function EnhancedAuthProvider({
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [initializeAuth]);
+
+  // Listen for global token expiration events from API client
+  useEffect(() => {
+    const handleGlobalTokenExpired = () => {
+      handleTokenExpired();
+    };
+
+    window.addEventListener('auth:tokenExpired', handleGlobalTokenExpired);
+    return () => window.removeEventListener('auth:tokenExpired', handleGlobalTokenExpired);
+  }, [handleTokenExpired]);
 
   // Context value
   const contextValue = {

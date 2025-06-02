@@ -68,7 +68,7 @@ const TaskList = ({
 
 export function Tasks() {
   const navigate = useNavigate();
-  const { isAuthenticated, isInitialized, user } = useAuth();
+  const { logout, isAuthenticated, isInitialized, user } = useAuth();
   const { showError, showSuccess } = useErrorNotification();
   
   // Form state using refs for uncontrolled components
@@ -80,18 +80,19 @@ export function Tasks() {
   const [createdTasks, setCreatedTasks] = useState<Task[]>([]);
   const [assignedTasks, setAssignedTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);  // User state
+  const [submitting, setSubmitting] = useState(false);
+  
+  // User state
   const [users, setUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
-  // Prevent concurrent API calls with separate flags
-  const tasksOperationInProgress = useRef(false);
-  const usersOperationInProgress = useRef(false);
+    // Prevent concurrent API calls
+  const operationInProgress = useRef(false);
 
   // Load tasks
   const loadTasks = useCallback(async () => {
-    if (!user || tasksOperationInProgress.current) return;
+    if (!user || operationInProgress.current) return;
     
-    tasksOperationInProgress.current = true;
+    operationInProgress.current = true;
     setLoading(true);
     
     try {
@@ -108,14 +109,14 @@ export function Tasks() {
       showError(message);
     } finally {
       setLoading(false);
-      tasksOperationInProgress.current = false;    }
+      operationInProgress.current = false;
+    }
   }, [user, showError]);
 
   // Load users
   const loadUsers = useCallback(async () => {
-    if (usersOperationInProgress.current) return;
+    if (operationInProgress.current) return;
     
-    usersOperationInProgress.current = true;
     setUsersLoading(true);
     
     try {
@@ -126,9 +127,7 @@ export function Tasks() {
       console.error('Error loading users:', error);
       showError(message);
     } finally {
-      usersOperationInProgress.current = false;
-      setUsersLoading(false);
-    }
+      setUsersLoading(false);    }
   }, [showError]);
 
   // Handle auth changes
@@ -212,8 +211,9 @@ export function Tasks() {
     // Debounce refresh to avoid excessive API calls
     setTimeout(loadTasks, 100);
   }, [loadTasks]);
+
   // Setup SSE connection
-  const { isConnected, error: sseError } = useSimpleSSE({ onTaskUpdate: handleTaskUpdate });
+  const { isConnected } = useSimpleSSE({ onTaskUpdate: handleTaskUpdate });
 
   if (!isInitialized) {
     return (
@@ -222,18 +222,22 @@ export function Tasks() {
       </Box>
     );
   }
+
   return (
     <Box sx={{ maxWidth: 800, mx: 'auto', p: 3 }}>
-      {/* Connection Status */}
-      <Box display="flex" justifyContent="flex-end" alignItems="center" mb={3}>
-        <Typography variant="body2" color={isConnected ? 'success.main' : 'error.main'}>
-          {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
+      {/* Header */}
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h4" component="h1">
+          Task Manager
         </Typography>
-        {sseError && (
-          <Typography variant="body2" color="warning.main" title={sseError} sx={{ ml: 2 }}>
-            ⚠️ {sseError}
+        <Box display="flex" alignItems="center" gap={2}>
+          <Typography variant="body2" color={isConnected ? 'success.main' : 'error.main'}>
+            {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
           </Typography>
-        )}
+          <Button variant="outlined" onClick={logout}>
+            Logout
+          </Button>
+        </Box>
       </Box>
 
       {/* Task Creation Form */}
@@ -267,16 +271,12 @@ export function Tasks() {
             >
               <MenuItem value="">
                 <em>Unassigned</em>
-              </MenuItem>              {users.map(user => (
+              </MenuItem>
+              {users.map(user => (
                 <MenuItem key={user.id} value={user.id}>
                   {user.username} ({user.email})
                 </MenuItem>
               ))}
-              {users.length === 0 && !usersLoading && (
-                <MenuItem disabled>
-                  <em>No users available</em>
-                </MenuItem>
-              )}
             </Select>
           </FormControl>
           <Button 
